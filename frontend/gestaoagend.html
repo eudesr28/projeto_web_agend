@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Usuários e Agendamentos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .bi-house-fill {
+            position: fixed;
+            top: 30px;
+            left: 20px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .modal-dialog {
+            max-width: 500px;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="index.html" class="bi bi-house-fill">Inicio</a>
+
+    <div class="container">
+        <h1 class="mt-4">Gestão de Usuários e Agendamentos</h1>
+
+        <!-- Tabela de agendamentos (visível apenas para administradores) -->
+        <div id="tabela-agendamentos" class="mt-4">
+            <h2>Agendamentos de Todos os Usuários</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Nome</th>
+                        <th scope="col">CPF</th>
+                        <th scope="col">Data</th>
+                        <th scope="col">Horário</th>
+                        <th scope="col">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="agendamentos-tbody"></tbody>
+            </table>
+        </div>
+
+        <!-- Agendamento do usuário logado -->
+        <div id="meu-agendamento" class="mt-4">
+            <h2>Seu Agendamento</h2>
+            <div id="agendamento-usuario"></div>
+            <button class="btn btn-primary" id="novo-agendamento">Novo Agendamento 
+                <i class="bi bi-pencil-square"></i>
+            </button>
+        </div>
+
+        <!-- Modal para criar novo agendamento -->
+        <div class="modal" tabindex="-1" id="modal-agendamento">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Novo Agendamento</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="form-agendamento">
+                            <div class="mb-3">
+                                <label for="data" class="form-label">Data</label>
+                                <input type="date" class="form-control" id="data" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="horario" class="form-label">Horário</label>
+                                <input type="time" class="form-control" id="horario" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Confirmar Agendamento</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <script>
+
+         // Função para pegar o ID do usuário a partir do token
+        const getUserId = () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.error("Token ausente. Usuário não autenticado.");
+                    return null;
+                }
+                const decodedToken = JSON.parse(atob(token.split('.')[1]));
+                return decodedToken.userId;
+            } catch (error) {
+                console.error('Erro ao decodificar token:', error);
+                return null;
+            }
+        };
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+
+        const userRole = localStorage.getItem('role'); // Role do usuário (admin ou comum)
+        const userId = getUserId(); // Função para pegar o userId do token
+
+        // Formatar a data
+        const dataFormatada = (dataString) => {
+            const dataAgendamento = new Date(dataString);//(agendamento.data);
+            const dia = String(dataAgendamento.getDate()).padStart(2, '0');
+            const mes = String(dataAgendamento.getMonth() + 1).padStart(2, '0');
+            const ano = dataAgendamento.getFullYear();
+            return  `${dia}-${mes}-${ano}`;
+    
+        }
+        // Função para carregar os agendamentos para usuários admins
+        const carregarAgendamentos = async () => {
+            if (userRole === 'admin') {
+                // Se for admin, carregar todos os agendamentos
+                try {
+                    const response = await axios.get('/api/user/agendamentotodos', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const agendamentos = response.data;
+                    const tbody = document.getElementById('agendamentos-tbody');
+                    tbody.innerHTML = '';
+                    agendamentos.forEach(agendamento => {
+                        const data = dataFormatada(agendamento.data);
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${agendamento.userId.nome}</td>
+                                <td>${agendamento.userId.cpf}</td>
+                                <td>${data}</td>
+                                <td>${agendamento.horario}</td>
+                                <td>
+                                    <button class="btn btn-success" onclick="editarAgendamento('${agendamento._id}')" title= "Editar Agendamento">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <button class="btn btn-danger" onclick="excluirAgendamento('${agendamento._id}')" title= "Excluir Agendamento">
+                                        <i class="bi bi-trash"></i>
+                                    </button>    
+                                    <button class="btn btn-primary" onclick="editarcadastro('${agendamento.userId._id}')" title= "Editar Cadastro">
+                                        <i class="bi bi-person-badge"></i>    
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar agendamentos:', error);
+                }
+            } else {
+                // Usuário comum: carrega apenas o agendamento do usuário logado
+                document.getElementById('tabela-agendamentos').style.display = 'none';
+                carregarMeuAgendamento();
+            }
+        };
+
+        // Função para carregar o agendamento de um usuário
+        const carregarMeuAgendamento = async () => {
+            try {
+                const response = await axios.get(`/api/user/agendamentomeu/${userId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.data.length > 0) {
+                    const agendamento = response.data[0];
+                    const data = dataFormatada(agendamento.data);
+                    document.getElementById('agendamento-usuario').innerHTML = `
+                        <p><strong>Nome:</strong> ${agendamento.userId.nome}</p>
+                        <p><strong>Cpf:</strong> ${agendamento.userId.cpf}</p>
+                        <p><strong>Data:</strong> ${data}</p>
+                        <p><strong>Horário:</strong> ${agendamento.horario}</p>
+                        <button class="btn btn-danger" onclick="excluirAgendamento('${agendamento._id}')">Cancelar</button>
+                `;
+                    // Oculta o botão de novo agendamento se já existir um
+                    document.getElementById('novo-agendamento').style.display = 'none';
+                } else {
+                    document.getElementById('agendamento-usuario').innerHTML = `<p>Nenhum agendamento encontrado.</p>`;
+                    // Garante que o botão seja exibido caso o usuário não tenha agendamento
+                    document.getElementById('novo-agendamento').style.display = 'block';
+                }
+            } catch (error) {
+                if (error.response && error.response.status === 404) {
+                    document.getElementById('agendamento-usuario').innerHTML = `<p>Você não possui datas agendadas.</p>`;
+                } else {    
+                console.warn("Nenhum agendamento encontrado para este usuário.");
+                }
+            }
+
+        };
+
+        // Função para criar um novo agendamento
+       const criarAgendamento = async (data, horario) => {
+            try {
+                await axios.post(`/api/user/agendamentocriar/${userId}`, { data, horario }, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                alert('Agendamento realizado com sucesso');
+
+                // Fechar o modal automaticamente
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modal-agendamento'));
+                if (modal) {
+                modal.hide();
+                }
+
+                carregarMeuAgendamento();
+            } catch (error) {
+                console.error('Erro ao criar agendamento:', error);
+                alert('Erro ao realizar agendamento');
+            }
+        };
+        // Função para excluir um agendamento
+        const excluirAgendamento = async (id) => {
+            if (confirm("Tem certeza que deseja cancelar este agendamento?")) {
+                try {
+                // if (userRole === 'admin' || userId === id) {
+                        await axios.delete(`/api/user/agendamentodelete/${id}`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        alert('Agendamento excluído com sucesso');
+                        carregarMeuAgendamento();
+                } catch (error) {
+                    console.error('Erro ao excluir agendamento:', error);
+                    alert('Erro ao excluir agendamento');
+                }
+            }
+        };
+
+        // Função para editar agendamento (somente admin)
+        const editarAgendamento = async (id) => {
+            if (userRole === 'admin') {
+                // Implementar a lógica de edição aqui
+                alert('Funcionalidade de edição em construção.');
+            } else {
+                alert('Você não tem permissão para editar este agendamento.');
+            }
+        };
+
+        // Exibir o modal de criação de agendamento
+        document.getElementById('novo-agendamento').addEventListener('click', () => {
+            const modal = new bootstrap.Modal(document.getElementById('modal-agendamento'));
+            modal.show();
+        });
+
+        // Submeter o formulário de agendamento
+        document.getElementById('form-agendamento').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const data = document.getElementById('data').value;
+            const horario = document.getElementById('horario').value;
+            criarAgendamento(data, horario);
+        });
+
+        window.onload = () => {
+            carregarAgendamentos();
+            // Esconde o botão de novo agendamento para administradores
+            if (userRole === 'admin') {
+                document.getElementById('meu-agendamento').style.display = 'none';
+            }else {
+                document.querySelector('h1').style.display = 'none'; // Esconde o título principal
+            }
+        };
+    const editarcadastro = (id) => {
+      window.location.href = `/editarcadastro.html?id=${id}`;
+    };
+
+   // function editarcadastro(id) {
+   // window.location.href = `/editarcadastro.html?id=${userId}`;
+   // }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
