@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Administrativa</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="mt-4">Gestão de Usuários e Agendamentos</h1>
+
+        <div id="tabela-agendamentos" class="mt-4">
+            <h2>Agendamentos de Todos os Usuários</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>CPF</th>
+                        <th>Data</th>
+                        <th>Horário</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="agendamentos-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login.html';
+
+        const carregarAgendamentos = async () => {
+            try {
+                const response = await axios.get('/api/user/agendamentotodos', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const agendamentos = response.data;
+                const tbody = document.getElementById('agendamentos-tbody');
+                tbody.innerHTML = '';
+                agendamentos.forEach(agendamento => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${agendamento.userId.nome}</td>
+                            <td>${agendamento.userId.cpf}</td>
+                            <td>${new Date(agendamento.data).toLocaleDateString()}</td>
+                            <td>${agendamento.horario}</td>
+                            <td>
+                                <button class="btn btn-success" onclick="editarAgendamento('${agendamento._id}')">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button class="btn btn-danger" onclick="excluirAgendamento('${agendamento._id}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <button class="btn btn-primary" onclick="editarcadastro('${agendamento.userId._id}')">
+                                    <i class="bi bi-person-badge"></i>
+                                </button>
+                            </td>
+                        </tr>`;
+                });
+            } catch (error) {
+                console.error('Erro ao carregar agendamentos:', error);
+            }
+        };
+        
+        window.onload = carregarAgendamentos;
+    </script>
+</body>
+
+</html>
