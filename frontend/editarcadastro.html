@@ -79,7 +79,7 @@
             }
         }
         
-        let userDeleted = false; // Flag para verificar se o usuário foi excluído
+        let userDeleted = false;
 
         // Função para excluir usuário
         async function excluirUsuario() {
@@ -90,7 +90,7 @@
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     alert('Usuario excluído com sucesso!');
-                    window.location.href = '/gestaoagend.html';  // Redirecionar para a página de gestão de agendamentos
+                    window.location.href = '/gestao_admin.html';
                 } catch (error) {
                     console.error('Erro ao excluir usuario:', error);
                     alert('Erro ao excluir usuario.');
@@ -102,7 +102,6 @@
             e.preventDefault();
 
             if (userDeleted) {
-            // Se o usuário foi excluído, não tenta atualizar
                 return;
             }
 
@@ -115,7 +114,7 @@
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 alert('Cadastro atualizado com sucesso!');
-                window.location.href = '/gestaoagend.html';
+                window.location.href = '/gestao_admin.html';
             } catch (error) {
                 console.error('Erro ao atualizar cadastro:', error);
                 alert('Erro ao atualizar cadastro.');

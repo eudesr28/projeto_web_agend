@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const userRoutes = require('./routes/userRoutes');
 const path = require('path');
+const session = require('express-session');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -16,6 +17,20 @@ mongoose.connect(process.env.MONGO_URI, {
 
 // Middleware
 app.use(express.json());
+
+// Middleware de Sessão
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'seu-segredo', // Defina um segredo para a sessão
+  resave: false, // Não resave a sessão se não for modificada
+  saveUninitialized: true, // Salve a sessão mesmo que não tenha sido modificada
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Habilita o cookie seguro apenas em produção (HTTPS)
+    httpOnly: true, // Impede o acesso ao cookie via JavaScript
+    maxAge: 3600000, // Tempo de vida do cookie (1 hora)
+    sameSite: 'None', // Permite cookies cross-origin, necessário para CORS
+  },
+}));
+
 app.use('/api/user', userRoutes);
 
 

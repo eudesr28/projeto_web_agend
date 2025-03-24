@@ -110,16 +110,6 @@ router.put('/usuarioedit/:id', isAuthenticated, async (req, res) => {
     }
 });
 
-// Atualizar cadastro usuario
-//router.put('/users/me', isAuthenticated, async (req, res) => {
-//    try {
-//        const user = await User.findByIdAndUpdate(req.user.userId, req.body, { new: true });
-//        res.json(user);
-//    } catch (err) {
-//        res.status(500).json({ message: 'Erro ao atualizar cadastro' });
-//    }
-//});
-
 // Excluir usuário (apenas admin)
 router.delete('/userdelete/:userId', isAuthenticated, async (req, res) => {
     if (req.user.role !== 'admin') {
@@ -142,10 +132,10 @@ router.delete('/userdelete/:userId', isAuthenticated, async (req, res) => {
 // Criar agendamento (apenas usuários cadastrados)
 router.post('/agendamentocriar/:userId', isAuthenticated, async (req, res) => {
     const { data, horario } = req.body;
-   // const userId = req.user.userId;
     const userId = req.params.userId;
 
     try {
+
         // Verificar se o usuário já tem agendamento
         const existingAgendamento = await Agendamento.findOne({ userId });
         if (existingAgendamento) {
@@ -180,13 +170,12 @@ router.get('/agendamentotodos', isAuthenticated, async (req, res) => {
     }
 });
 
+
 // Buscar agendamento de um usuário
 router.get('/agendamentomeu/:userId', isAuthenticated, async (req, res) => {
     const { userId } = req.params;
-    //console.log(`Buscando agendamentos para o usuário com ID: ${userId}`);
     try {
-        //const agendamentos = await Agendamento.find({ userId: req.params.userId });
-        const agendamentos = await Agendamento.find({ userId }).populate('userId'); // Popular os dados do usuário
+        const agendamentos = await Agendamento.find({ userId }).populate('userId'); 
         if (agendamentos.length === 0) {
             console.log(`Nenhum agendamento encontrado para o usuário com ID: ${userId}`);
             return res.status(404).json({ message: "Nenhum agendamento encontrado para este usuário." });
@@ -197,6 +186,51 @@ router.get('/agendamentomeu/:userId', isAuthenticated, async (req, res) => {
         res.status(500).json({ message: 'Erro ao buscar agendamentos' });
     }
 });
+
+// Buscar agendamento para edição (incluindo dados do usuário)
+router.get('/agendamentoparaeditar/:id', isAuthenticated, async (req, res) => {
+    const agendamentoId = req.params.id;
+
+    try {
+        const agendamento = await Agendamento.findById(agendamentoId).populate('userId');
+        if (!agendamento) {
+            return res.status(404).json({ message: 'Agendamento não encontrado' });
+        }
+        res.json(agendamento); // Retorna o agendamento com os dados do usuário
+    } catch (err) {
+        res.status(500).json({ message: 'Erro ao buscar agendamento' });
+    }
+});
+
+
+// Atualizar agendamento
+router.put('/agendamentoupdate/:id', isAuthenticated, async (req, res) => {
+    const agendamentoId = req.params.id;
+    const { data, horario } = req.body;
+
+    try {
+        const agendamento = await Agendamento.findById(agendamentoId);
+        if (!agendamento) {
+            return res.status(404).json({ message: 'Agendamento não encontrado' });
+        }
+
+        // Verificar se o novo horário já está agendado
+        const agendamentoExistente = await Agendamento.findOne({ data, horario });
+        if (agendamentoExistente) {
+            return res.status(400).json({ message: 'Esse horário e data já está agendado.' });
+        }
+
+        // Atualizar o agendamento
+        agendamento.data = data;
+        agendamento.horario = horario;
+        await agendamento.save();
+
+        res.json({ message: 'Agendamento atualizado com sucesso.' });
+    } catch (err) {
+        res.status(500).json({ message: 'Erro ao atualizar agendamento.' });
+    }
+});
+
 
 // Excluir agendamento (admin ou usuário do agendamento)
 router.delete('/agendamentodelete/:id', isAuthenticated, async (req, res) => {
