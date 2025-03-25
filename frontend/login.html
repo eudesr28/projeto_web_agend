@@ -95,9 +95,10 @@
                 localStorage.setItem('role', response.data.role);
                 
                 if(response.data.role === 'admin') {
-                    window.location.href = 'gestao_admin.html';
+                     window.location.replace('gestao_admin.html');
                 }else{
-                    window.location.href = 'gestao_usuario.html';
+                    window.location.replace('gestao_usuario.html');
+                    //window.location.href = '/gestao_usuario.html';
                 }
             } catch (err) {
                 alert('Erro no login: ' + (err.response?.data?.message || 'Erro no servidor.'));
